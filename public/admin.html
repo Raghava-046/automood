@@ -1,0 +1,135 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>AutoMood Admin</title>
+<link href="https://fonts.googleapis.com/css2?family=Space+Grotesk:wght@500;600;700&family=Inter:wght@400;500;600&family=IBM+Plex+Mono:wght@400;500&display=swap" rel="stylesheet">
+<script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
+<script src="/config.js"></script>
+<style>
+:root{
+  --bg:#0a0d18; --surface:#12162a; --surface2:#171c34; --border:#242a48;
+  --text:#edeff7; --muted:#8892b0; --blue:#6c8eff; --coral:#ff8b5e; --green:#63e6a3;
+}
+*{box-sizing:border-box;}
+body{margin:0;background:var(--bg);color:var(--text);font-family:'Inter',sans-serif;}
+.mono{font-family:'IBM Plex Mono',monospace;}
+h1,h2,h3{font-family:'Space Grotesk',sans-serif;}
+.wrap{max-width:1180px;margin:0 auto;padding:32px;}
+
+/* login */
+#login-view{min-height:100vh;display:flex;align-items:center;justify-content:center;}
+.login-card{background:var(--surface);border:1px solid var(--border);border-radius:18px;padding:40px;width:100%;max-width:380px;}
+.login-card h1{font-size:20px;margin-bottom:6px;}
+.login-card p{color:var(--muted);font-size:13.5px;margin-bottom:24px;}
+.field{margin-bottom:14px;}
+.field label{display:block;font-size:12px;color:var(--muted);margin-bottom:6px;font-family:'IBM Plex Mono';}
+.field input{width:100%;background:var(--bg);border:1px solid var(--border);border-radius:9px;padding:11px 13px;color:var(--text);font-size:14px;}
+.field input:focus{outline:none;border-color:var(--blue);}
+.btn{background:var(--blue);color:#080a14;border:none;padding:12px 18px;border-radius:9px;font-weight:600;font-size:14px;cursor:pointer;width:100%;}
+.btn:hover{background:#87a2ff;}
+.btn-sm{width:auto;padding:8px 14px;font-size:13px;}
+.error-text{color:var(--coral);font-size:13px;margin-top:12px;display:none;}
+
+/* dashboard */
+#dash-view{display:none;}
+.topbar{display:flex;justify-content:space-between;align-items:center;margin-bottom:30px;}
+.topbar h1{font-size:20px;}
+.logout{background:var(--surface2);border:1px solid var(--border);color:var(--text);padding:9px 16px;border-radius:9px;font-size:13px;cursor:pointer;}
+
+.stats-row{display:grid;grid-template-columns:repeat(6,1fr);gap:12px;margin-bottom:28px;}
+@media(max-width:900px){.stats-row{grid-template-columns:repeat(3,1fr);}}
+.stat-card{background:var(--surface);border:1px solid var(--border);border-radius:14px;padding:18px;}
+.stat-card .n{font-family:'Space Grotesk';font-size:26px;color:var(--blue);}
+.stat-card .l{font-size:11.5px;color:var(--muted);font-family:'IBM Plex Mono';margin-top:4px;text-transform:uppercase;}
+
+.controls{display:flex;gap:10px;margin-bottom:18px;flex-wrap:wrap;}
+.controls input, .controls select{background:var(--surface);border:1px solid var(--border);color:var(--text);padding:10px 14px;border-radius:9px;font-size:13.5px;}
+.controls input{flex:1;min-width:200px;}
+
+table{width:100%;border-collapse:collapse;background:var(--surface);border:1px solid var(--border);border-radius:14px;overflow:hidden;}
+th,td{text-align:left;padding:13px 14px;font-size:13.5px;border-bottom:1px solid var(--border);}
+th{color:var(--muted);font-family:'IBM Plex Mono';font-size:11.5px;text-transform:uppercase;font-weight:500;}
+tr:last-child td{border-bottom:none;}
+tr:hover td{background:var(--surface2);}
+.status-pill{padding:4px 10px;border-radius:100px;font-size:11.5px;font-family:'IBM Plex Mono';display:inline-block;}
+.status-new{background:rgba(108,142,255,0.12);color:var(--blue);}
+.status-contacted{background:rgba(255,139,94,0.12);color:var(--coral);}
+.status-qualified{background:rgba(99,230,163,0.12);color:var(--green);}
+.status-demo_booked{background:rgba(99,230,163,0.2);color:var(--green);}
+.status-converted{background:rgba(99,230,163,0.3);color:var(--green);}
+.status-not_interested{background:rgba(140,146,176,0.15);color:var(--muted);}
+.row-actions{display:flex;gap:8px;}
+.row-actions select{background:var(--bg);border:1px solid var(--border);color:var(--text);border-radius:7px;padding:5px 8px;font-size:12px;}
+.del-btn{background:none;border:1px solid var(--border);color:var(--coral);border-radius:7px;padding:5px 9px;font-size:12px;cursor:pointer;}
+.empty{padding:40px;text-align:center;color:var(--muted);}
+.pager{display:flex;justify-content:center;gap:10px;margin-top:16px;}
+.pager button{background:var(--surface);border:1px solid var(--border);color:var(--text);padding:8px 14px;border-radius:8px;cursor:pointer;font-size:13px;}
+.pager button:disabled{opacity:0.4;cursor:default;}
+</style>
+</head>
+<body>
+
+<div id="login-view">
+  <div class="login-card">
+    <h1>AutoMood Admin</h1>
+    <p>Sign in with your admin account.</p>
+    <form id="login-form">
+      <div class="field"><label>Email</label><input type="email" id="login-email" required></div>
+      <div class="field"><label>Password</label><input type="password" id="login-password" required></div>
+      <button type="submit" class="btn">Sign In</button>
+      <div class="error-text" id="login-error"></div>
+    </form>
+  </div>
+</div>
+
+<div id="dash-view">
+  <div class="wrap">
+    <div class="topbar">
+      <h1>AutoMood — Leads Dashboard</h1>
+      <button class="logout" id="logout-btn">Sign Out</button>
+    </div>
+
+    <div class="stats-row" id="stats-row">
+      <div class="stat-card"><div class="n" id="stat-total">–</div><div class="l">Total Leads</div></div>
+      <div class="stat-card"><div class="n" id="stat-new">–</div><div class="l">New</div></div>
+      <div class="stat-card"><div class="n" id="stat-contacted">–</div><div class="l">Contacted</div></div>
+      <div class="stat-card"><div class="n" id="stat-qualified">–</div><div class="l">Qualified</div></div>
+      <div class="stat-card"><div class="n" id="stat-demo_booked">–</div><div class="l">Demo Booked</div></div>
+      <div class="stat-card"><div class="n" id="stat-converted">–</div><div class="l">Converted</div></div>
+    </div>
+
+    <div class="controls">
+      <input type="text" id="search-input" placeholder="Search name, business, email, phone…">
+      <select id="status-filter">
+        <option value="">All statuses</option>
+        <option value="new">New</option>
+        <option value="contacted">Contacted</option>
+        <option value="qualified">Qualified</option>
+        <option value="demo_booked">Demo Booked</option>
+        <option value="converted">Converted</option>
+        <option value="not_interested">Not Interested</option>
+      </select>
+    </div>
+
+    <table>
+      <thead>
+        <tr>
+          <th>Name</th><th>Business</th><th>Phone</th><th>Email</th><th>Type</th><th>Status</th><th>Date</th><th></th>
+        </tr>
+      </thead>
+      <tbody id="leads-tbody"></tbody>
+    </table>
+    <div class="empty" id="empty-state" style="display:none;">No leads found.</div>
+    <div class="pager">
+      <button id="prev-page">← Prev</button>
+      <span class="mono" id="page-label" style="align-self:center;color:var(--muted);font-size:13px;"></span>
+      <button id="next-page">Next →</button>
+    </div>
+  </div>
+</div>
+
+<script src="/admin.js"></script>
+</body>
+</html>
